@@ -31,24 +31,89 @@ var HelloWorldLayer = cc.Layer.extend({
     },
 
     createTestMenu:function() {
-        var item1 = new cc.MenuItemLabel(new cc.LabelTTF("Test Item 1", "sans", 28), function() {
-            cc.log("Test Item 1");
+        sdkbox.IAP.init();
+        sdkbox.IAP.setDebug(true);
+        sdkbox.IAP.setListener({
+            onSuccess : function (product) {
+                //Purchase success
+                cc.log("Purchase successful: " + product.name)
+            },
+            onFailure : function (product, msg) {
+                //Purchase failed
+                //msg is the error message
+                cc.log("Purchase failed: " + product.name + " error: " + msg);
+            },
+            onCanceled : function (product) {
+                //Purchase was canceled by user
+                cc.log("Purchase canceled: " + product.name);
+            },
+            onRestored : function (product) {
+                //Purchase restored
+                cc.log("Restored: " + product.name);
+            },
+            onProductRequestSuccess : function (products) {
+                self.menuIAP.removeAllChildren();
+                //Returns you the data for all the iap products
+                //You can get each item using following method
+                for (var i = 0; i < products.length; i++) {
+                    cc.log("================");
+                    cc.log("name: " + products[i].name);
+                    cc.log("price: " + products[i].price);
+                    cc.log("================");
+
+                    (function() {
+                        var name = products[i].name;
+                        var btn = new cc.MenuItemFont(name, function() {
+                            cc.log("purchase: " + name);
+                            sdkbox.IAP.purchase(name);
+                        });
+                        self.menuIAP.addChild(btn);
+                    }());
+                }
+                self.menuIAP.alignItemsVerticallyWithPadding(5);
+            },
+            onProductRequestFailure : function (msg) {
+                //When product refresh request fails.
+                cc.log("Failed to get products");
+            }
         });
 
-        var item2 = new cc.MenuItemLabel(new cc.LabelTTF("Test Item 2", "sans", 28), function() {
-            cc.log("Test Item 2");
-        });
+        var LEVEL_LEADER_BOARD_ID = "1434";
+        var SOLDIER_ACHIEVEMENT_ID =  "3622";
 
-        var item3 = new cc.MenuItemLabel(new cc.LabelTTF("Test Item 3", "sans", 28), function() {
-            cc.log("Test Item 3");
-        });
+        var size = cc.winSize;
+        var menu = new cc.Menu();
 
-        var winsize = cc.winSize;
-        var menu = new cc.Menu(item1, item2, item3);
-        menu.x = winsize.width / 2;
-        menu.y = winsize.height / 2;
-        menu.alignItemsVerticallyWithPadding(20);
+        menu.addChild(new cc.MenuItemLabel(new cc.Label.createWithSystemFont("load products", "sans", 24), function() {
+            sdkbox.IAP.refresh();
+        }));
+        menu.addChild(new cc.MenuItemLabel(new cc.Label.createWithSystemFont("restore purchase", "sans", 24), function(){
+            sdkbox.IAP.restore();
+        }));
+        menu.addChild(new cc.MenuItemLabel(new cc.Label.createWithSystemFont("update leaderboard random [1,100]", "sans", 24), function(){
+            var score = Math.round(Math.rand() * 100);
+            sdkbox.PluginLeaderboard.submitScore(LEVEL_LEADER_BOARD_ID, score);
+        }));
+        menu.addChild(new cc.MenuItemLabel(new cc.Label.createWithSystemFont("get leaderboard", "sans", 24), function(){
+            sdkbox.PluginLeaderboard.getLeaderboard(LEVEL_LEADER_BOARD_ID);
+        }));
+        menu.addChild(new cc.MenuItemLabel(new cc.Label.createWithSystemFont("achievement test", "sans", 24), function(){
+            sdkbox.PluginAchievement.unlock(SOLDIER_ACHIEVEMENT_ID);
+        }));
+
+        menu.x = size.width / 2;
+        menu.y = size.height - 140;
+        menu.alignItemsVerticallyWithPadding(5);
         this.addChild(menu);
+
+        this.menuIAP = new cc.Menu();
+        this.addChild(this.menuIAP);
+
+        this.txtCoin = new cc.Label("0", "sans", 32);
+        this.txtCoin.x = size.width / 2;
+        this.txtCoin.y = 120;
+        this.addChild(this.txtCoin);
+
     }
 });
 
