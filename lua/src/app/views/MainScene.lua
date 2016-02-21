@@ -1,6 +1,10 @@
 
 local MainScene = class("MainScene", cc.load("mvc").ViewBase)
 
+
+local LEVEL_LEADER_BOARD_ID = "1434"
+local SOLDIER_ACHIEVEMENT_ID =  "3622"
+
 function MainScene:onCreate()
     print("Sample Startup")
 
@@ -18,27 +22,76 @@ function MainScene:onCreate()
 end
 
 function MainScene:setupTestMenu()
-    local label1 = cc.Label:createWithSystemFont("Test Item 1", "sans", 28)
-    local item1 = cc.MenuItemLabel:create(label1)
-    item1:onClicked(function()
-        print("Test Item 1")
-    end)
+    local winsize = cc.Director:getInstance():getWinSize()
 
-    local label2 = cc.Label:createWithSystemFont("Test Item 2", "sans", 28)
-    local item2 = cc.MenuItemLabel:create(label2)
-    item2:onClicked(function()
-        print("Test Item 2")
-    end)
+    local menu = cc.Menu:create(
+        cc.MenuItemLabel:create(cc.Label:createWithSystemFont("load products", "sans", 24)):onClicked(function()
+            sdkbox.IAP:refresh()
+        end),
+        cc.MenuItemLabel:create(cc.Label:createWithSystemFont("restore purchase", "sans", 24)):onClicked(function()
+            sdkbox.IAP.restore();
+        end),
+        cc.MenuItemLabel:create(cc.Label:createWithSystemFont("update leaderboard random [1,100]", "sans", 24)):onClicked(function()
+            local score = math.rand(1, 100)
+            sdkbox.PluginLeaderboard:submitScore(LEVEL_LEADER_BOARD_ID, score)
+        end),
+        cc.MenuItemLabel:create(cc.Label:createWithSystemFont("get leaderboard", "sans", 24)):onClicked(function()
+            sdkbox.PluginLeaderboard:getLeaderboard(LEVEL_LEADER_BOARD_ID)
+        end),
+        cc.MenuItemLabel:create(cc.Label:createWithSystemFont("achievement test", "sans", 24)):onClicked(function()
+            sdkbox.PluginAchievement:unlock(SOLDIER_ACHIEVEMENT_ID)
+        end)
+    )
 
-    local label3 = cc.Label:createWithSystemFont("Test Item 3", "sans", 28)
-    local item3 = cc.MenuItemLabel:create(label3)
-    item3:onClicked(function()
-        print("Test Item 3")
-    end)
-
-    local menu = cc.Menu:create(item1, item2, item3)
-    menu:alignItemsVerticallyWithPadding(24)
+    menu:setPosition(winsize.width / 2, winsize.height - 140)
+    menu:alignItemsVerticallyWithPadding(5)
     self:addChild(menu)
+
+    local txtCoin = cc.Label:createWithSystemFont("0", "sans", 24)
+    txtCoin:setPosition(winsize.width / 2, 120)
+    self:addChild(txtCoin)
+
+    local menuIAP = cc.Menu:create()
+    self:addChild(menuIAP)
+
+    sdkbox.IAP:init()
+    sdkbox.IAP:setDebug(true)
+    sdkbox.IAP:setListener(function(args)
+        if "onSuccess" == args.event then
+            local product = args.product
+            dump(product, "onSuccess:")
+        elseif "onFailure" == args.event then
+            local product = args.product
+            local msg = args.msg
+            dump(product, "onFailure:")
+            print("msg:", msg)
+        elseif "onCanceled" == args.event then
+            local product = args.product
+            dump(product, "onCanceled:")
+        elseif "onRestored" == args.event then
+            local product = args.product
+            dump(product, "onRestored:")
+        elseif "onProductRequestSuccess" == args.event then
+            local products = args.products
+            dump(products, "onProductRequestSuccess:")
+
+            menuIAP:removeAllChildren()
+            for _, product in ipairs(products) do
+                local btn = cc.MenuItemFont:create(product.name):onClicked(function()
+                    sdkbox.IAP:purchase(product.name)
+                end)
+                menuIAP:addChild(btn)
+            end
+
+            menuIAP:alignItemsVerticallyWithPadding(5)
+            menuIAP:setPosition(winsize.width / 2, winsize.height / 2)
+        elseif "onProductRequestFailure" == args.event then
+            local msg = args.msg
+            print("msg:", msg)
+        else
+            print("unknown event ", args.event)
+        end
+    end)
 end
 
 return MainScene
