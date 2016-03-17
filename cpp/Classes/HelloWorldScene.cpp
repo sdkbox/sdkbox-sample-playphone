@@ -6,6 +6,7 @@ using namespace sdkbox;
 
 #define kLevelLeaderBoardId "1434"
 #define kSoldierAchievementId "3622"
+#define fontsize 52
 
 class MyLeaderboardListener : public sdkbox::LeaderboardListener
 {
@@ -92,22 +93,28 @@ void HelloWorld::createTestMenu()
     _txtCoin->setPosition(Vec2(size.width / 2, 60));
     addChild(_txtCoin);
 
+    CCMenuItemFont::setFontSize(fontsize);
+
+    _iapMenu = CCMenu::create();
+    _iapMenu->setPosition(size.width/2, size.height-200);
+    addChild(_iapMenu);
+
     auto menu = Menu::create();
 
-    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("load products", "sans", 24), CC_CALLBACK_1(HelloWorld::onRequestIAP, this)));
+    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("load products", "sans", fontsize), CC_CALLBACK_1(HelloWorld::onRequestIAP, this)));
 
-    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("restore purchase", "sans", 24), CC_CALLBACK_1(HelloWorld::onRestoreIAP, this)));
+    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("restore purchase", "sans", fontsize), CC_CALLBACK_1(HelloWorld::onRestoreIAP, this)));
 
-    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("update leaderboard random [1,100]", "sans", 24), [](Ref*){
+    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("update leaderboard random [1,100]", "sans", fontsize), [](Ref*){
         int score = rand_0_1() * 100 + 1;
         PluginLeaderboard::submitScore(kLevelLeaderBoardId, score);
     }));
 
-    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("get leaderboard", "sans", 24), [](Ref*){
+    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("get leaderboard", "sans", fontsize), [](Ref*){
         PluginLeaderboard::getLeaderboard(kLevelLeaderBoardId);
     }));
 
-    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("achievement test", "sans", 24), [](Ref*){
+    menu->addChild(MenuItemLabel::create(Label::createWithSystemFont("achievement test", "sans", fontsize), [](Ref*){
         PluginAchievement::unlock(kSoldierAchievementId);
     }));
 
@@ -134,10 +141,11 @@ void HelloWorld::onRestoreIAP(cocos2d::Ref* sender)
 
 void HelloWorld::onIAP(cocos2d::Ref *sender)
 {
-    int i = reinterpret_cast<int>(dynamic_cast<MenuItemLabel*>(sender)->getUserData());
-    auto const &product = _products[i];
-    CCLOG("Start IAP %s", product.name.c_str());
-    IAP::purchase(product.name);
+    auto btn = static_cast<Node*>(sender);
+    Product* p = (Product*)btn->getUserData();
+
+    CCLOG("Start IAP %s", p->name.c_str());
+    IAP::purchase(p->name);
 }
 
 void HelloWorld::onInitialized(bool ok)
@@ -196,14 +204,13 @@ void HelloWorld::updateIAP(const std::vector<sdkbox::Product>& products)
         CCLOG("IAP: Price: %s", _products[i].price.c_str());
         CCLOG("IAP: Price Value: %f", _products[i].priceValue);
 
-        auto item = MenuItemLabel::create(Label::createWithSystemFont(_products[i].name, "sans", 24), CC_CALLBACK_1(HelloWorld::onIAP, this));
-        item->setUserData(reinterpret_cast<void*>(i));
+        auto item = MenuItemLabel::create(Label::createWithSystemFont(_products[i].name, "sans", fontsize), CC_CALLBACK_1(HelloWorld::onIAP, this));
+        item->setUserData(&_products[i]);
         _iapMenu->addChild(item);
     }
 
     Size size = Director::getInstance()->getWinSize();
-    _iapMenu->alignItemsVerticallyWithPadding(5);
-    _iapMenu->setPosition(Vec2(size.width/2, size.height / 2));
+    _iapMenu->alignItemsVerticallyWithPadding(10);
 }
 
 void HelloWorld::onProductRequestSuccess(const std::vector<Product> &products)

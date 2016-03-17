@@ -2,8 +2,8 @@
 local MainScene = class("MainScene", cc.load("mvc").ViewBase)
 
 
-local LEVEL_LEADER_BOARD_ID = "1434"
-local SOLDIER_ACHIEVEMENT_ID =  "3622"
+local LEVEL_LEADER_BOARD_ID = "1560"
+local SOLDIER_ACHIEVEMENT_ID =  "3726"
 
 function MainScene:onCreate()
     print("Sample Startup")
@@ -32,7 +32,7 @@ function MainScene:setupTestMenu()
             sdkbox.IAP.restore();
         end),
         cc.MenuItemLabel:create(cc.Label:createWithSystemFont("update leaderboard random [1,100]", "sans", 24)):onClicked(function()
-            local score = math.rand(1, 100)
+            local score = math.random() * 100 + 1
             sdkbox.PluginLeaderboard:submitScore(LEVEL_LEADER_BOARD_ID, score)
         end),
         cc.MenuItemLabel:create(cc.Label:createWithSystemFont("get leaderboard", "sans", 24)):onClicked(function()
@@ -92,6 +92,17 @@ function MainScene:setupTestMenu()
             print("unknown event ", args.event)
         end
     end)
+
+    sdkbox.PluginAchievement:init()
+    sdkbox.PluginLeaderboard:init()
+    sdkbox.PluginLeaderboard:setListener(function(event)
+            dump(event, "IAP")
+            if event.name == "onComplete" then
+                print("[IAP] fetch leaderboard data complete ", event.leaderboard)
+            elseif event.name == "onFail" then
+                print("[IAP] fetch leaderboard date fail")
+            end
+        end)
 end
 
 return MainScene
