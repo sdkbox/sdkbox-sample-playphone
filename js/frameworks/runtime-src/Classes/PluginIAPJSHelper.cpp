@@ -143,31 +143,48 @@ USING_NS_CC;
 #define sharedDirector getInstance
 #endif
 
-class JsIAPCallbackObj : public CCObject
-{
+class JsIAPCallbackObj : public CCObject {
+
 public:
-    static JsIAPCallbackObj *create(const std::string &eventName, JSObject *handler, const std::vector<sdkbox::Product>& products)
-    {
-        JsIAPCallbackObj *obj = new JsIAPCallbackObj(eventName, handler, products);
+    static JsIAPCallbackObj* create(const std::string& name, JSObject *handler) {
+        JsIAPCallbackObj *obj = new JsIAPCallbackObj();
+        obj->_eventName = name;
+        obj->_jsHandler = handler;
+
         obj->autorelease();
         return obj;
     }
 
-    void start()
-    {
-        CCDirector::sharedDirector()->getScheduler()->scheduleSelector(schedule_selector(JsIAPCallbackObj::callback), this, 0.1, false);
+    void setProduct(const sdkbox::Product& product) {
+        _product = product;
     }
 
-    void callback(float dt)
-    {
-        if (!s_cx)
-        {
+    void setProducts(const std::vector<sdkbox::Product>& products) {
+         _products = products;
+    }
+
+    void setMsg(const std::string& msg) {
+        _msg = msg;
+    }
+
+    void setBoolean(bool b) {
+        _bValue = b;
+    }
+
+    void start() {
+        CCDirector::sharedDirector()->getScheduler()
+            ->scheduleSelector(schedule_selector(JsIAPCallbackObj::callback), this, 0.1, false);
+    }
+
+    void callback(float dt) {
+        if (!s_cx) {
             return;
         }
+
         JSContext* cx = s_cx;
         const char* func_name = _eventName.data();
 
-        JS::RootedObject obj(cx, m_jsHandler);
+        JS::RootedObject obj(cx, _jsHandler);
         JSAutoCompartment ac(cx, obj);
 
 #if defined(MOZJS_MAJOR_VERSION)
@@ -186,9 +203,38 @@ public:
         jsval func_handle;
 #endif
 
-        jsval dataVal[1];
-        jsval value = std_vector_product_to_jsval(cx, m_products);
-        dataVal[0] = value;
+        jsval dataVal[2];
+        int datalen = 0;
+
+        if (0 == _eventName.compare("onInitialized")) {
+            dataVal[0] = BOOLEAN_TO_JSVAL(_bValue);
+            datalen = 1;
+        } else if (0 == _eventName.compare("onSuccess")) {
+            dataVal[0] = OBJECT_TO_JSVAL(product_to_obj(cx, _product));
+            datalen = 1;
+        } else if (0 == _eventName.compare("onFailure")) {
+            dataVal[0] = OBJECT_TO_JSVAL(product_to_obj(cx, _product));
+            dataVal[1] = std_string_to_jsval(cx, _msg);
+            datalen = 2;
+        } else if (0 == _eventName.compare("onCanceled")) {
+            dataVal[0] = OBJECT_TO_JSVAL(product_to_obj(cx, _product));
+            datalen = 1;
+        } else if (0 == _eventName.compare("onRestored")) {
+            dataVal[0] = OBJECT_TO_JSVAL(product_to_obj(cx, _product));
+            datalen = 1;
+        } else if (0 == _eventName.compare("onProductRequestSuccess")) {
+            dataVal[0] = std_vector_product_to_jsval(cx, _products);
+            datalen = 1;
+        } else if (0 == _eventName.compare("onProductRequestFailure")) {
+            dataVal[0] = std_string_to_jsval(cx, _msg);
+            datalen = 1;
+        } else if (0 == _eventName.compare("onRestoreComplete")) {
+            dataVal[0] = BOOLEAN_TO_JSVAL(_bValue);
+            dataVal[1] = std_string_to_jsval(cx, _msg);
+            datalen = 2;
+        } else {
+            return;
+        }
 
         if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
             if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
@@ -199,9 +245,9 @@ public:
             }
 
 #if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(1, dataVal), &retval);
+            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(datalen, dataVal), &retval);
 #else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
+            JS_CallFunctionName(cx, obj, func_name, datalen, dataVal, &retval);
 #endif
         }
 
@@ -210,375 +256,86 @@ public:
     }
 
 private:
-    JsIAPCallbackObj(const std::string &eventName, JSObject *handler, const std::vector<sdkbox::Product>& products)
-    : _eventName(eventName)
-    , m_jsHandler(handler)
-    {
-        m_products = products;
+    JsIAPCallbackObj()
+    : _eventName("")
+    , _jsHandler(nullptr)
+    , _msg("")
+    , _bValue(false) {
+        _products.clear();
         retain();
     }
 
-    std::vector<sdkbox::Product> m_products;
-    JSObject* m_jsHandler;
+    std::vector<sdkbox::Product> _products;
+    JSObject* _jsHandler;
     std::string _eventName;
+    std::string _msg;
+    sdkbox::Product _product;
+    bool _bValue;
 }; // JsIAPCallbackObj
 
 
-class IAPWrapperJS : public sdkbox::IAPListener
-{
+class IAPWrapperJS : public sdkbox::IAPListener {
+
 private:
     JSObject* _JSDelegate;
+
 public:
-    void setJSDelegate(JSObject* delegate)
-    {
+    void setJSDelegate(JSObject* delegate) {
         _JSDelegate = delegate;
     }
 
-    JSObject* getJSDelegate()
-    {
+    JSObject* getJSDelegate() {
         return _JSDelegate;
     }
 
-    void onSuccess(const sdkbox::Product& info)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onSuccess";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[1];
-
-        jsval value = OBJECT_TO_JSVAL(product_to_obj(s_cx, info));
-
-        dataVal[0] = value;
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onSuccess(const sdkbox::Product& info) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onSuccess", _JSDelegate);
+        obj->setProduct(info);
+        obj->start();
     }
 
-    void onFailure(const sdkbox::Product& info, const std::string& msg)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onFailure";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[2];
-        jsval value = OBJECT_TO_JSVAL(product_to_obj(s_cx, info));
-
-        dataVal[0] = value;
-        dataVal[1] = std_string_to_jsval(cx, msg);
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onFailure(const sdkbox::Product& info, const std::string& msg) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onFailure", _JSDelegate);
+        obj->setProduct(info);
+        obj->setMsg(msg);
+        obj->start();
     }
 
-    void onCanceled(const sdkbox::Product& info)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onCanceled";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-
-        jsval dataVal[1];
-        jsval value = OBJECT_TO_JSVAL(product_to_obj(s_cx, info));
-
-        dataVal[0] = value;
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onCanceled(const sdkbox::Product& info) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onCanceled", _JSDelegate);
+        obj->setProduct(info);
+        obj->start();
     }
 
-    void onRestored(const sdkbox::Product& info)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onRestored";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[1];
-        jsval value = OBJECT_TO_JSVAL(product_to_obj(s_cx, info));
-
-        dataVal[0] = value;
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onRestored(const sdkbox::Product& info) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onRestored", _JSDelegate);
+        obj->setProduct(info);
+        obj->start();
     }
 
-    void onProductRequestSuccess(const std::vector<sdkbox::Product>& products)
-    {
-        JsIAPCallbackObj::create("onProductRequestSuccess", _JSDelegate, products)->start();
+    void onProductRequestSuccess(const std::vector<sdkbox::Product>& products) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onProductRequestSuccess", _JSDelegate);
+        obj->setProducts(products);
+        obj->start();
     }
 
-    void onProductRequestFailure(const std::string& msg)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onProductRequestFailure";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[1];
-
-        dataVal[0] = std_string_to_jsval(cx, msg);
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onProductRequestFailure(const std::string& msg) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onProductRequestFailure", _JSDelegate);
+        obj->setMsg(msg);
+        obj->start();
     }
 
-    void onInitialized(bool ok)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onInitialized";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[1];
-
-        dataVal[0] = BOOLEAN_TO_JSVAL(ok);
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onInitialized(bool ok) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onInitialized", _JSDelegate);
+        obj->setBoolean(ok);
+        obj->start();
     }
 
-    void onRestoreComplete(bool ok, const std::string& msg)
-    {
-        if (!s_cx)
-        {
-            return;
-        }
-        JSContext* cx = s_cx;
-        const char* func_name = "onRestoreComplete";
-
-        JS::RootedObject obj(cx, _JSDelegate);
-        JSAutoCompartment ac(cx, obj);
-
-#if defined(MOZJS_MAJOR_VERSION)
-#if MOZJS_MAJOR_VERSION >= 33
-        bool hasAction;
-        JS::RootedValue retval(cx);
-        JS::RootedValue func_handle(cx);
-#else
-        bool hasAction;
-        jsval retval;
-        JS::RootedValue func_handle(cx);
-#endif
-#elif defined(JS_VERSION)
-        JSBool hasAction;
-        jsval retval;
-        jsval func_handle;
-#endif
-        jsval dataVal[2];
-
-        dataVal[0] = BOOLEAN_TO_JSVAL(ok);
-        dataVal[1] = std_string_to_jsval(cx, msg);
-
-        if (JS_HasProperty(cx, obj, func_name, &hasAction) && hasAction) {
-            if(!JS_GetProperty(cx, obj, func_name, &func_handle)) {
-                return;
-            }
-            if(func_handle == JSVAL_VOID) {
-                return;
-            }
-
-#if MOZJS_MAJOR_VERSION >= 31
-            JS_CallFunctionName(cx, obj, func_name, JS::HandleValueArray::fromMarkedLocation(sizeof(dataVal)/sizeof(*dataVal), dataVal), &retval);
-#else
-            JS_CallFunctionName(cx, obj, func_name, sizeof(dataVal)/sizeof(*dataVal), dataVal, &retval);
-#endif
-        }
+    void onRestoreComplete(bool ok, const std::string& msg) {
+        JsIAPCallbackObj* obj = JsIAPCallbackObj::create("onRestoreComplete", _JSDelegate);
+        obj->setBoolean(ok);
+        obj->setMsg(msg);
+        obj->start();
     }
 };
 
