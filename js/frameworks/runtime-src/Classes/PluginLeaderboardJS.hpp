@@ -33,15 +33,5 @@ bool js_PluginLeaderboardJS_PluginLeaderboard_submitScore(JSContext *cx, uint32_
 #elif defined(JS_VERSION)
 JSBool js_PluginLeaderboardJS_PluginLeaderboard_submitScore(JSContext *cx, uint32_t argc, jsval *vp);
 #endif
-#if defined(MOZJS_MAJOR_VERSION)
-bool js_PluginLeaderboardJS_PluginLeaderboard_removeListener(JSContext *cx, uint32_t argc, jsval *vp);
-#elif defined(JS_VERSION)
-JSBool js_PluginLeaderboardJS_PluginLeaderboard_removeListener(JSContext *cx, uint32_t argc, jsval *vp);
-#endif
-#if defined(MOZJS_MAJOR_VERSION)
-bool js_PluginLeaderboardJS_PluginLeaderboard_getListener(JSContext *cx, uint32_t argc, jsval *vp);
-#elif defined(JS_VERSION)
-JSBool js_PluginLeaderboardJS_PluginLeaderboard_getListener(JSContext *cx, uint32_t argc, jsval *vp);
-#endif
 #endif
 

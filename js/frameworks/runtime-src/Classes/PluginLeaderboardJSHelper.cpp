@@ -1,23 +1,13 @@
 #include "PluginLeaderboardJSHelper.h"
-#include "cocos2d_specifics.hpp"
 #include "PluginLeaderboard/PluginLeaderboard.h"
 #include "SDKBoxJSHelper.h"
-#include "cocos2d.h"
 
 static JSContext* s_cx = nullptr;
 
-class LeaderboardListenerJsHelper : public sdkbox::LeaderboardListener
+class LeaderboardListenerJsHelper : public sdkbox::LeaderboardListener, public sdkbox::JSListenerBase
 {
-
 public:
-    void setJSDelegate(JSObject* delegate)
-    {
-        mJsDelegate = delegate;
-    }
-
-    JSObject* getJSDelegate()
-    {
-        return mJsDelegate;
+    LeaderboardListenerJsHelper():sdkbox::JSListenerBase() {
     }
 
     void onComplete(std::string leaderboard)
@@ -44,7 +34,7 @@ private:
         JSContext* cx = s_cx;
         const char* func_name = fName.c_str();
 
-        JS::RootedObject obj(cx, mJsDelegate);
+        JS::RootedObject obj(cx, getJSDelegate());
         JSAutoCompartment ac(cx, obj);
 
 #if MOZJS_MAJOR_VERSION >= 31
@@ -84,10 +74,6 @@ private:
 #endif
         }
     }
-
-private:
-    JSObject* mJsDelegate;
-
 };
 
 #if MOZJS_MAJOR_VERSION >= 28
@@ -106,11 +92,10 @@ JSBool js_PluginLeaderboardJS_PluginLeaderboard_setListener(JSContext *cx, unsig
         {
             ok = false;
         }
-        JSObject *tmpObj = args.get(0).toObjectOrNull();
 
         JSB_PRECONDITION2(ok, cx, false, "js_PluginLeaderboardJS_PluginLeaderboard_setListener : Error processing arguments");
         LeaderboardListenerJsHelper* lis = new LeaderboardListenerJsHelper();
-        lis->setJSDelegate(tmpObj);
+        lis->setJSDelegate(args.get(0));
         sdkbox::PluginLeaderboard::setListener(lis);
 
         args.rval().setUndefined();
