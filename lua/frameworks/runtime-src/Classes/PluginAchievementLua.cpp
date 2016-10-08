@@ -1,6 +1,5 @@
 #include "PluginAchievementLua.hpp"
 #include "PluginAchievement/PluginAchievement.h"
-#include "tolua_fix.h"
 #include "SDKBoxLuaHelper.h"
 #include "sdkbox/Sdkbox.h"
 

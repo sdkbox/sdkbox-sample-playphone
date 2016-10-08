@@ -1,8 +1,6 @@
 
 #include "PluginLeaderboardLuaHelper.h"
 #include "PluginLeaderboard/PluginLeaderboard.h"
-#include "CCLuaEngine.h"
-#include "tolua_fix.h"
 #include "SDKBoxLuaHelper.h"
 
 class LeaderboardListenerLua : public sdkbox::LeaderboardListener {
