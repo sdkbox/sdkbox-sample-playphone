@@ -1,69 +1,70 @@
 {
     "android": {
-        "leaderboard": {}, 
+        "leaderboard": {},
         "iap": {
             "items": {
                 "remove_ads": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non1"
-                }, 
+                },
                 "double_coin": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non2"
-                }, 
+                },
                 "coin_package": {
                     "id": "com.cocos2dx.plugintest2"
-                }, 
+                },
                 "coin_package2": {
                     "id": "com.cocos2dx.plugintest3"
                 }
-            }, 
+            },
             "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq7eIGu7dRcBRBSC05cYvxjBMd7cqq9w6++1er+cqO2tyWPtWB4vuTkliq4k/Fkylx5UMfptdOYOW8ENgQyVucs/NyuOAGmve4j5JFhLPcLa6LjO2HUSY6zk04DRR9Zw7YPET4WAezZTz8jYMGhPG08HYltVj8cmSpSFWd1nI0pGOJoLQIMkIkXplgnPQRbMpuOu70vnQQBS1RFcoFT7OjaV8U0cfJzMoS1TMkGqaJKks2T+qOBNTtkXzge92EnvYIkhpCfN98dj6aQmETNp5yj5Fa+jcbAVF8dy5xymJwioL89XQKfKkGR+P6ESMoBEPfIZYIlMU8EUwmC+UKGLujQIDAQAB"
-        }, 
+        },
         "achievement": {}
-    }, 
+    },
     "ios": {
-        "leaderboard": {}, 
+        "leaderboard": {},
         "iap": {
             "items": {
                 "remove_ads": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non1"
-                }, 
+                },
                 "double_coin": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non2"
-                }, 
+                },
                 "coin_package": {
                     "id": "com.cocos2dx.plugintest2"
-                }, 
+                },
                 "coin_package2": {
                     "id": "com.cocos2dx.plugintest3"
                 }
             }
-        }, 
+        },
         "achievement": {}
-    }, 
+    },
     "playphone": {
-        "skey": "13669982c613ba5c6a600e0029dc0837dbdf3e76", 
+        "skey": "13669982c613ba5c6a600e0029dc0837dbdf3e76",
         "iap": {
+            "debug":true,
             "items": {
                 "remove_ads": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non1"
-                }, 
+                },
                 "coin_package": {
                     "id": "com.cocos2dx.plugintest2"
-                }, 
+                },
                 "double_coin": {
-                    "type": "non_consumable", 
+                    "type": "non_consumable",
                     "id": "com.cocos2dx.non2"
-                }, 
+                },
                 "coin_package2": {
                     "id": "com.cocos2dx.plugintest3"
                 }
-            }, 
-            "key": "key"
+            },
+            "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvVM2ShGslWYkdrTG0h6kUR5avCW1gWTXI9bl9IBQOv6uqVEftV9K3Ij9XUq8fFivaIeMb7p7ja6UpJfYc/0Vh9qB+VjxcNFCuzPGsBqXjXjOJHq45tZaIKCZb/28dzFdnimCIyqbCIB+QXyrrF/tOoAY2IADKoQasHnC/FOcVOom5gOl2AgUftxE3z2zhcvntAb310ShKKSEMPlaHHmPSVMaWfeLS0tkQOBZ7AGq0Bzi7irDf/JcU91r0N1xLTPhyGgyJ/HqNPSroNBFlWmq4b2U9dk9LT8ITGETF78tukGYSs/u9k8aqpgYJCn5LM6hKE6wXGYXAIewnd3G98XpWwIDAQAB"
         }
     }
 }
